@@ -31,19 +31,31 @@ def GrabScreen(top, left, width, height):
 Returns position of needle in haystack
 """
 def GetTemplatePosition(haystack, needle, threshold):
-    # find dino's position in screengrab
     result = cv.matchTemplate(haystack, needle, cv.TM_CCOEFF_NORMED)
-
     minVal, maxVal, minLoc, maxLoc = cv.minMaxLoc(result)
 
-    if maxVal < threshold:
-        print("Template not confidently located. Confidence: {}".format(maxVal))
-        sys.exit()
+    # if maxVal < threshold:
+    #     print("Template not confidently located. Confidence: {}".format(maxVal))
+    #     sys.exit()
 
     tempX, tempY = maxLoc
     return tempX, tempY, maxVal
 
 def Main():
+    # load obstacle templates
+    templateDino = cv.imread("images/dino.png", 0)  
+    templateCactus1 = cv.imread("images/cactus_1.png", 0)  
+    templateCactus2 = cv.imread("images/cactus_2.png", 0)  
+    templateCacti1 = cv.imread("images/cacti_1.png", 0)  
+    templateCacti2 = cv.imread("images/cacti_2.png", 0)  
+    templateCacti3 = cv.imread("images/cacti_3.png", 0)  
+    templatePtero1 = cv.imread("images/pterodactyl_1.png", 0)  
+    templatePtero2 = cv.imread("images/pterodactyl_2.png", 0)  
+    templateRestart = cv.imread("images/restart.png", 0)  
+
+    threshold = 0.8
+    
+
     # open game webpage
     url = "https://chromedino.com/"
     try:
@@ -55,16 +67,68 @@ def Main():
 
     monitorW, monitorH = pyautogui.size()
     fullScreen = GrabScreen(0, 0, monitorW, monitorH)   # haystack
-    templateDino = cv.imread("images/dino.png", 0)      # needle
-    cropX, cropY, confidence = GetTemplatePosition(fullScreen, templateDino, 0.8)
+    cropX, cropY , _ = GetTemplatePosition(fullScreen, templateDino, threshold)
     cropH = 150
     cropW = 600
+
+    speedOffset = 0
+    horizontalCheck = int(cropX + speedOffset)
 
     while True:
         lastTime = time.time()
 
         # grab gameplay frame
         img = GrabScreen(int(cropY - cropH/2 - 20), cropX, cropW, cropH)
+
+        # check for cactus and draw rectangle if it exists
+        obstacleX, obstacleY, confidence = GetTemplatePosition(img, templateCactus1, threshold)
+        if confidence >= threshold:
+            lowerRight = (obstacleX + templateCactus1.shape[1], obstacleY + templateCactus1.shape[0])
+            cv.rectangle(img, (obstacleX, obstacleY), lowerRight, (0, 255, 0), 1)
+            if obstacleX <= horizontalCheck:
+                pyautogui.press("up")
+
+        # cactus_2
+        obstacleX, obstacleY, confidence = GetTemplatePosition(img, templateCactus2, threshold)
+        if confidence >= threshold:
+            lowerRight = (obstacleX + templateCactus2.shape[1], obstacleY + templateCactus2.shape[0])
+            cv.rectangle(img, (obstacleX, obstacleY), lowerRight, (0, 255, 0), 1)
+            if obstacleX <= horizontalCheck:
+                pyautogui.press("up")
+        # cacti_1
+        obstacleX, obstacleY, confidence = GetTemplatePosition(img, templateCacti1, threshold)
+        if confidence >= threshold:
+            lowerRight = (obstacleX + templateCacti1.shape[1], obstacleY + templateCacti1.shape[0])
+            cv.rectangle(img, (obstacleX, obstacleY), lowerRight, (0, 255, 0), 1)
+            if obstacleX <= horizontalCheck:
+                pyautogui.press("up")
+        # cacti_2
+        obstacleX, obstacleY, confidence = GetTemplatePosition(img, templateCacti2, threshold)
+        if confidence >= threshold:
+            lowerRight = (obstacleX + templateCacti2.shape[1], obstacleY + templateCacti2.shape[0])
+            cv.rectangle(img, (obstacleX, obstacleY), lowerRight, (0, 255, 0), 1)
+            if obstacleX <= horizontalCheck:
+                pyautogui.press("up")
+        # pterodactyl
+        obstacleX, obstacleY, confidence = GetTemplatePosition(img, templatePtero1, threshold)
+        if confidence >= threshold:
+            lowerRight = (obstacleX + templatePtero1.shape[1], obstacleY + templatePtero1.shape[0])
+            cv.rectangle(img, (obstacleX, obstacleY), lowerRight, (0, 255, 0), 1)
+            if obstacleX <= horizontalCheck:
+                pyautogui.press("up")
+        # pterodacty2
+        obstacleX, obstacleY, confidence = GetTemplatePosition(img, templatePtero2, threshold)
+        if confidence >= threshold:
+            lowerRight = (obstacleX + templatePtero2.shape[1], obstacleY + templatePtero2.shape[0])
+            cv.rectangle(img, (obstacleX, obstacleY), lowerRight, (0, 255, 0), 1)
+            if obstacleX <= horizontalCheck:
+                pyautogui.press("up")
+        # restart
+        obstacleX, obstacleY, confidence = GetTemplatePosition(img, templateRestart, threshold)
+        if confidence >= threshold:
+            lowerRight = (obstacleX + templateRestart.shape[1], obstacleY + templateRestart.shape[0])
+            cv.rectangle(img, (obstacleX, obstacleY), lowerRight, (0, 255, 0), 1)
+            pyautogui.press("up")
 
         # FPS counter
         fps = "FPS: {}".format(int(1/(time.time() - lastTime)))
