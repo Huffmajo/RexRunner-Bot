@@ -17,22 +17,25 @@ Params  top: Y-position of top left corner of screenshot
         left: X-position of top left corner of screenshot
         width: Width of screenshot right from left
         height: Height of screenshot down from top
+        color: if true, returns a color screengrab
+               otherwise returns a gray screengrab
 
-Return  Grayscale image of screenshot at provided
+Return  image of screenshot at provided
 """
-def GrabScreen(top, left, width, height):
+def GrabScreen(top, left, width, height, color = False):
     sct = mss.mss()
     crop = {"top": top, "left": left, "width": width, "height": height}
     img = np.asarray(sct.grab(crop))
-    imgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    return imgGray
+    if color is False:
+        img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    return img
 
 """
 Returns position of needle in haystack
 """
 def GetTemplatePosition(haystack, needle, threshold):
     result = cv.matchTemplate(haystack, needle, cv.TM_CCOEFF_NORMED)
-    minVal, maxVal, minLoc, maxLoc = cv.minMaxLoc(result)
+    _, maxVal, _, maxLoc = cv.minMaxLoc(result)
 
     # if maxVal < threshold:
     #     print("Template not confidently located. Confidence: {}".format(maxVal))
@@ -41,101 +44,122 @@ def GetTemplatePosition(haystack, needle, threshold):
     tempX, tempY = maxLoc
     return tempX, tempY, maxVal
 
+"""
+Returns array of positions of needles in haystack
+"""
+def GetTemplatePositions(haystack, needle, threshold):
+    result = cv.matchTemplate(haystack, needle, cv.TM_CCOEFF_NORMED)
+    locations = np.where(result >= threshold)
+    return locations
+
+"""
+GetCenterPoint
+Returns x and y position coordinates of given image's center
+"""
+def GetCenterPoint(img, topLeftX, topLeftY):
+    h = img.shape[1]
+    w = img.shape[0]
+    centerX = topLeftX + int(w/2)
+    centerY = topLeftY + int(h/2)
+    return (centerX, centerY)
+
+"""
+GetLowerRightPoint
+Returns x and y position coordinates of given image's lower right
+"""
+def GetLowerRightPoint(img, topLeftX, topLeftY):
+    x = topLeftX + img.shape[1]
+    y = topLeftY + img.shape[0]
+    return (x, y)
+
 def Main():
     # load obstacle templates
-    templateDino = cv.imread("images/dino.png", 0)  
-    templateCactus1 = cv.imread("images/cactus_1.png", 0)  
-    templateCactus2 = cv.imread("images/cactus_2.png", 0)  
-    templateCacti1 = cv.imread("images/cacti_1.png", 0)  
-    templateCacti2 = cv.imread("images/cacti_2.png", 0)  
-    templateCacti3 = cv.imread("images/cacti_3.png", 0)  
-    templatePtero1 = cv.imread("images/pterodactyl_1.png", 0)  
-    templatePtero2 = cv.imread("images/pterodactyl_2.png", 0)  
-    templateRestart = cv.imread("images/restart.png", 0)  
+    templateCacti = []
+    templatePtero = []
+    templateDino = cv.imread("images/dino.png", 0)
+    templateRestart = cv.imread("images/restart.png", 0)
+    for i in range(1, 6):
+        templateCacti.append(cv.imread("images/cacti_{}.png".format(i), 0))
+    for i in range(1, 3):
+        templatePtero.append(cv.imread("images/pterodactyl_{}.png".format(i), 0))
 
-    threshold = 0.8
-    
+    threshold = 0.95
 
     # open game webpage
     url = "https://chromedino.com/"
     try:
         wb.open(url, 1, True)
-        time.sleep(3)    # give page time to load
+        time.sleep(2)    # give page time to load
     except wb.Error as e:
         print("Unable to open {} : {}".format(url, e))
         sys.exit()
 
     monitorW, monitorH = pyautogui.size()
     fullScreen = GrabScreen(0, 0, monitorW, monitorH)   # haystack
-    cropX, cropY , _ = GetTemplatePosition(fullScreen, templateDino, threshold)
+    cropX, cropY , _ = GetTemplatePosition(fullScreen, templateDino, threshold) # dino's position in fullscreen
+    dinoWidth = templateDino.shape[1]
     cropH = 150
     cropW = 600
 
-    speedOffset = 0
-    horizontalCheck = int(cropX + speedOffset)
+    dinoCrop = GrabScreen(int(cropY - cropH/2 - 20), cropX, cropW, cropH)
+    dinoX, dinoY , _ = GetTemplatePosition(dinoCrop, templateDino, threshold) # dino's position in drop
+
+    speedOffset = 134
+    verticalOffset = 0
+    horizontalCheck = dinoX + dinoWidth + speedOffset
+    verticalCheck = dinoY - verticalOffset
 
     while True:
         lastTime = time.time()
 
         # grab gameplay frame
-        img = GrabScreen(int(cropY - cropH/2 - 20), cropX, cropW, cropH)
+        imgColor = GrabScreen(int(cropY - cropH/2 - 20), cropX, cropW, cropH, color=True)
+        img = cv.cvtColor(imgColor, cv.COLOR_BGR2GRAY)
 
-        # check for cactus and draw rectangle if it exists
-        obstacleX, obstacleY, confidence = GetTemplatePosition(img, templateCactus1, threshold)
-        if confidence >= threshold:
-            lowerRight = (obstacleX + templateCactus1.shape[1], obstacleY + templateCactus1.shape[0])
-            cv.rectangle(img, (obstacleX, obstacleY), lowerRight, (0, 255, 0), 1)
-            if obstacleX <= horizontalCheck:
-                pyautogui.press("up")
+        # draw horizontal and vertical limit lines
+        lineH = cv.line(imgColor, (horizontalCheck, 0), (horizontalCheck, cropH), (255, 0, 0), 1)
+        cv.putText(lineH, str(horizontalCheck), (horizontalCheck, 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        lineV = cv.line(imgColor, (0, verticalCheck), (860, verticalCheck), (255, 0, 0), 1)
+        cv.putText(lineV, str(verticalCheck), (horizontalCheck, verticalCheck - 5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
-        # cactus_2
-        obstacleX, obstacleY, confidence = GetTemplatePosition(img, templateCactus2, threshold)
+        # check for cacti
+        for cactus in templateCacti:
+            w, h = cactus.shape[::-1]
+            positions = GetTemplatePositions(img, cactus, threshold)
+
+            for pos in zip(*positions[::-1]):
+                centerX, _ = GetCenterPoint(cactus, pos[0], pos[1])
+                rect = cv.rectangle(imgColor, pos, (pos[0] + w, pos[1] + h), (0, 0, 255), 1)
+                cv.putText(rect, str(pos[0]), pos, cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+                if centerX <= horizontalCheck:
+                    pyautogui.press("up")
+
+        # check for pterodactyl
+        for ptero in templatePtero:
+            w, h = ptero.shape[::-1]
+            positions = GetTemplatePositions(img, ptero, .6)
+
+            for pos in zip(*positions[::-1]):
+                centerX, centerY = GetCenterPoint(ptero, pos[0], pos[1])
+                rect = cv.rectangle(imgColor, pos, (pos[0] + w, pos[1] + h), (255, 255, 0), 1)
+                cv.putText(rect, str(pos[0]), pos, cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+                if centerX <= horizontalCheck:
+                    if centerY >= verticalCheck:
+                        pyautogui.press("up")
+                    else:
+                        pyautogui.press("down")
+
+        # auto restart on failure
+        _, _, confidence = GetTemplatePosition(img, templateRestart, threshold)
         if confidence >= threshold:
-            lowerRight = (obstacleX + templateCactus2.shape[1], obstacleY + templateCactus2.shape[0])
-            cv.rectangle(img, (obstacleX, obstacleY), lowerRight, (0, 255, 0), 1)
-            if obstacleX <= horizontalCheck:
-                pyautogui.press("up")
-        # cacti_1
-        obstacleX, obstacleY, confidence = GetTemplatePosition(img, templateCacti1, threshold)
-        if confidence >= threshold:
-            lowerRight = (obstacleX + templateCacti1.shape[1], obstacleY + templateCacti1.shape[0])
-            cv.rectangle(img, (obstacleX, obstacleY), lowerRight, (0, 255, 0), 1)
-            if obstacleX <= horizontalCheck:
-                pyautogui.press("up")
-        # cacti_2
-        obstacleX, obstacleY, confidence = GetTemplatePosition(img, templateCacti2, threshold)
-        if confidence >= threshold:
-            lowerRight = (obstacleX + templateCacti2.shape[1], obstacleY + templateCacti2.shape[0])
-            cv.rectangle(img, (obstacleX, obstacleY), lowerRight, (0, 255, 0), 1)
-            if obstacleX <= horizontalCheck:
-                pyautogui.press("up")
-        # pterodactyl
-        obstacleX, obstacleY, confidence = GetTemplatePosition(img, templatePtero1, threshold)
-        if confidence >= threshold:
-            lowerRight = (obstacleX + templatePtero1.shape[1], obstacleY + templatePtero1.shape[0])
-            cv.rectangle(img, (obstacleX, obstacleY), lowerRight, (0, 255, 0), 1)
-            if obstacleX <= horizontalCheck:
-                pyautogui.press("up")
-        # pterodacty2
-        obstacleX, obstacleY, confidence = GetTemplatePosition(img, templatePtero2, threshold)
-        if confidence >= threshold:
-            lowerRight = (obstacleX + templatePtero2.shape[1], obstacleY + templatePtero2.shape[0])
-            cv.rectangle(img, (obstacleX, obstacleY), lowerRight, (0, 255, 0), 1)
-            if obstacleX <= horizontalCheck:
-                pyautogui.press("up")
-        # restart
-        obstacleX, obstacleY, confidence = GetTemplatePosition(img, templateRestart, threshold)
-        if confidence >= threshold:
-            lowerRight = (obstacleX + templateRestart.shape[1], obstacleY + templateRestart.shape[0])
-            cv.rectangle(img, (obstacleX, obstacleY), lowerRight, (0, 255, 0), 1)
             pyautogui.press("up")
 
         # FPS counter
         fps = "FPS: {}".format(int(1/(time.time() - lastTime)))
-        cv.putText(img, fps, (int(cropW/2), 15), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0))
+        cv.putText(imgColor, fps, (int(cropW/2), 15), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0))
 
         # show cropped image
-        cv.imshow("Cropped Image", img)
+        cv.imshow("Cropped Image", imgColor)
 
         if cv.waitKey(1) == ord("q"):
             break

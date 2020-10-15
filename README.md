@@ -16,7 +16,7 @@ My code will have to do the following to achieve my goal:
 1. :white_check_mark: Use dinosaur position to crop screengrab to only gameplay area
 1. :white_check_mark: Process the screengrabs to identify obstacles 
     * OpenCV's template matching
-    * Draw rectangles around 
+    * Draw rectangles around obstacles
 1. :white_check_mark: Send inputs based on identified obstacle positions to avoid obstacles
     * pyautogui can simulate keyboard inputs :keyboard::thumbsup:
     * Jump over cacti
@@ -31,6 +31,12 @@ My code will have to do the following to achieve my goal:
 ## Iterations
 ### MK-I
 ![MK-I](/gifs/mkI.gif)
-> Top image is directly from the browser. Bottom image is the screen grabs after processing
+> Top feed is from the browser. Bottom feed is the screen grabs with debug processing added
 
 My first effort worked but had some large shortcomings. The cacti were getting noticed (seen by the rectangles drawn around them on the lower screen)  and the dinosaur was properly jumping to avoid them, but framerates were dropping from 30 FPS to around 6 FPS once the cacti got within range. I think we're losing frames from trying to match multiple catci templates. I'll need to optimize some code to keep those frames steady.
+
+###MK-II
+![MK-II](/gifs/mkII.gif)
+> Top feed is from the browser. Bottom feed is the screen grabs with debug processing added
+
+I've added more debug information to the processed feed. The vertical line shows how close an obstacle will get before the dino will jump. I'll probably have to have this gradually move to the right as the game speeds up over time. The horizontal line shows how the dinosaur handles pterodactyls once they're past the vertical line. If they're above the horizontal line, the dino will duck. If they're below the line, the dino will jump. I also refactored some code for performance and clarity. I'm still looking into how to keep framerate consistent while remaining OS agnostic.
