@@ -35,7 +35,7 @@ My code will have to do the following to achieve my goal:
 
 My first effort worked but had some large shortcomings. The cacti were getting noticed (seen by the rectangles drawn around them on the lower screen)  and the dinosaur was properly jumping to avoid them, but framerates were dropping from 30 FPS to around 6 FPS once the cacti got within range. I think we're losing frames from trying to match multiple catci templates. I'll need to optimize some code to keep those frames steady.
 
-###MK-II
+### MK-II
 ![MK-II](/gifs/mkII.gif)
 > Top feed is from the browser. Bottom feed is the screen grabs with debug processing added
 
