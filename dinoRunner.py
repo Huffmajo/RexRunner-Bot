@@ -78,7 +78,7 @@ def Main():
     templatePtero = []
     templateDino = cv.imread("images/dino.png", 0)
     templateRestart = cv.imread("images/restart.png", 0)
-    for i in range(1, 6):
+    for i in range(1, 7):
         templateCacti.append(cv.imread("images/cacti_{}.png".format(i), 0))
     for i in range(1, 3):
         templatePtero.append(cv.imread("images/pterodactyl_{}.png".format(i), 0))
@@ -103,11 +103,18 @@ def Main():
 
     dinoCrop = GrabScreen(int(cropY - cropH/2 - 20), cropX, cropW, cropH)
     dinoX, dinoY , _ = GetTemplatePosition(dinoCrop, templateDino, threshold) # dino's position in drop
+    dinoCenterX, dinoCenterY = GetCenterPoint(dinoCrop, dinoX, dinoY)
 
+    runOffset = 12
+    dinoX += runOffset
+    dinoCenterX += runOffset
+
+    # 134 for no fastfall
+    # 100 with fastfall
     speedOffset = 134
-    verticalOffset = 0
-    horizontalCheck = dinoX + dinoWidth + speedOffset
-    verticalCheck = dinoY - verticalOffset
+    jumpCheck = dinoX + dinoWidth + speedOffset
+    fastfallCheck = dinoX + dinoWidth + 40
+    duckCheck = dinoY + 10
 
     while True:
         lastTime = time.time()
@@ -117,10 +124,12 @@ def Main():
         img = cv.cvtColor(imgColor, cv.COLOR_BGR2GRAY)
 
         # draw horizontal and vertical limit lines
-        lineH = cv.line(imgColor, (horizontalCheck, 0), (horizontalCheck, cropH), (255, 0, 0), 1)
-        cv.putText(lineH, str(horizontalCheck), (horizontalCheck, 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-        lineV = cv.line(imgColor, (0, verticalCheck), (860, verticalCheck), (255, 0, 0), 1)
-        cv.putText(lineV, str(verticalCheck), (horizontalCheck, verticalCheck - 5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        lineJump = cv.line(imgColor, (jumpCheck, 0), (jumpCheck, cropH), (255, 0, 0), 1)
+        cv.putText(lineJump, str(jumpCheck), (jumpCheck, 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        lineDuck = cv.line(imgColor, (0, duckCheck), (860, duckCheck), (255, 0, 0), 1)
+        cv.putText(lineDuck, str(duckCheck), (jumpCheck, duckCheck - 5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        lineFastfall = cv.line(imgColor, (fastfallCheck, 0), (fastfallCheck, cropH), (255, 0, 0), 1)
+        cv.putText(lineFastfall, str(fastfallCheck), (fastfallCheck + 10, 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
         # check for cacti
         for cactus in templateCacti:
@@ -130,24 +139,28 @@ def Main():
             for pos in zip(*positions[::-1]):
                 centerX, _ = GetCenterPoint(cactus, pos[0], pos[1])
                 rect = cv.rectangle(imgColor, pos, (pos[0] + w, pos[1] + h), (0, 0, 255), 1)
-                cv.putText(rect, str(pos[0]), pos, cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-                if centerX <= horizontalCheck:
+                cv.putText(rect, str(centerX), pos, cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+                if centerX <= jumpCheck:
                     pyautogui.press("up")
 
         # check for pterodactyl
         for ptero in templatePtero:
             w, h = ptero.shape[::-1]
-            positions = GetTemplatePositions(img, ptero, .6)
+            positions = GetTemplatePositions(img, ptero, threshold)
 
             for pos in zip(*positions[::-1]):
                 centerX, centerY = GetCenterPoint(ptero, pos[0], pos[1])
                 rect = cv.rectangle(imgColor, pos, (pos[0] + w, pos[1] + h), (255, 255, 0), 1)
-                cv.putText(rect, str(pos[0]), pos, cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
-                if centerX <= horizontalCheck:
-                    if centerY >= verticalCheck:
+                cv.putText(rect, str(centerY), pos, cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+                if centerX <= jumpCheck:
+                    if centerY >= duckCheck:
                         pyautogui.press("up")
+                        print("jump pterry")
                     else:
-                        pyautogui.press("down")
+                        print("duck pterry")
+                        pyautogui.keyDown("down")
+                        time.sleep(0.1)
+                        pyautogui.keyUp("down")
 
         # auto restart on failure
         _, _, confidence = GetTemplatePosition(img, templateRestart, threshold)
