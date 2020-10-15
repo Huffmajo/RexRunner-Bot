@@ -33,14 +33,9 @@ def GrabScreen(top, left, width, height, color = False):
 """
 Returns position of needle in haystack
 """
-def GetTemplatePosition(haystack, needle, threshold):
+def GetTemplatePosition(haystack, needle):
     result = cv.matchTemplate(haystack, needle, cv.TM_CCOEFF_NORMED)
     _, maxVal, _, maxLoc = cv.minMaxLoc(result)
-
-    # if maxVal < threshold:
-    #     print("Template not confidently located. Confidence: {}".format(maxVal))
-    #     sys.exit()
-
     tempX, tempY = maxLoc
     return tempX, tempY, maxVal
 
@@ -84,6 +79,7 @@ def Main():
         templatePtero.append(cv.imread("images/pterodactyl_{}.png".format(i), 0))
 
     threshold = 0.95
+    grounded = True
 
     # open game webpage
     url = "https://chromedino.com/"
@@ -96,14 +92,15 @@ def Main():
 
     monitorW, monitorH = pyautogui.size()
     fullScreen = GrabScreen(0, 0, monitorW, monitorH)   # haystack
-    cropX, cropY , _ = GetTemplatePosition(fullScreen, templateDino, threshold) # dino's position in fullscreen
+    cropX, cropY , _ = GetTemplatePosition(fullScreen, templateDino) # dino's position in fullscreen
     dinoWidth = templateDino.shape[1]
+    dinoHeight = templateDino.shape[0]
     cropH = 150
     cropW = 600
 
     dinoCrop = GrabScreen(int(cropY - cropH/2 - 20), cropX, cropW, cropH)
-    dinoX, dinoY , _ = GetTemplatePosition(dinoCrop, templateDino, threshold) # dino's position in drop
-    dinoCenterX, dinoCenterY = GetCenterPoint(dinoCrop, dinoX, dinoY)
+    dinoX, startingDinoY , _ = GetTemplatePosition(dinoCrop, templateDino) # dino's position in crop
+    dinoCenterX, _ = GetCenterPoint(dinoCrop, dinoX, startingDinoY)
 
     runOffset = 12
     dinoX += runOffset
@@ -114,7 +111,7 @@ def Main():
     speedOffset = 134
     jumpCheck = dinoX + dinoWidth + speedOffset
     fastfallCheck = dinoX + dinoWidth + 40
-    duckCheck = dinoY + 10
+    duckCheck = startingDinoY + 10
 
     while True:
         lastTime = time.time()
@@ -131,6 +128,12 @@ def Main():
         lineFastfall = cv.line(imgColor, (fastfallCheck, 0), (fastfallCheck, cropH), (255, 0, 0), 1)
         cv.putText(lineFastfall, str(fastfallCheck), (fastfallCheck + 10, 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
+        # find dino
+        dinoX, dinoY, confidence = GetTemplatePosition(img, templateDino)
+        if confidence >= threshold:
+            rect = cv.rectangle(imgColor, (dinoX, dinoY), (dinoX + dinoWidth, dinoY + dinoHeight), (155, 255, 155), 1)
+            grounded = dinoY >= startingDinoY
+
         # check for cacti
         for cactus in templateCacti:
             w, h = cactus.shape[::-1]
@@ -140,9 +143,9 @@ def Main():
                 centerX, _ = GetCenterPoint(cactus, pos[0], pos[1])
                 rect = cv.rectangle(imgColor, pos, (pos[0] + w, pos[1] + h), (0, 0, 255), 1)
                 cv.putText(rect, str(centerX), pos, cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-                if centerX <= jumpCheck:
-                    pyautogui.press("up")
-
+                if centerX <= jumpCheck and grounded:
+                        pyautogui.press("up")
+                        
         # check for pterodactyl
         for ptero in templatePtero:
             w, h = ptero.shape[::-1]
@@ -153,17 +156,16 @@ def Main():
                 rect = cv.rectangle(imgColor, pos, (pos[0] + w, pos[1] + h), (255, 255, 0), 1)
                 cv.putText(rect, str(centerY), pos, cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
                 if centerX <= jumpCheck:
-                    if centerY >= duckCheck:
+                    if centerY >= duckCheck and grounded:
                         pyautogui.press("up")
-                        print("jump pterry")
                     else:
                         print("duck pterry")
                         pyautogui.keyDown("down")
-                        time.sleep(0.1)
+                        time.sleep(0.3)
                         pyautogui.keyUp("down")
 
         # auto restart on failure
-        _, _, confidence = GetTemplatePosition(img, templateRestart, threshold)
+        _, _, confidence = GetTemplatePosition(img, templateRestart)
         if confidence >= threshold:
             pyautogui.press("up")
 
