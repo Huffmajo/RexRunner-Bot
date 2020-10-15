@@ -108,13 +108,18 @@ def Main():
 
     # 134 for no fastfall
     # 100 with fastfall
-    speedOffset = 134
+    speedOffset = baseSpeed = 134
     jumpCheck = dinoX + dinoWidth + speedOffset
     fastfallCheck = dinoX + dinoWidth + 40
     duckCheck = startingDinoY + 10
 
+    startTime = time.time()
+
     while True:
         lastTime = time.time()
+        elapsedTime = time.time() - startTime
+
+        print("ElapsedTime: {}".format(elapsedTime))
 
         # grab gameplay frame
         imgColor = GrabScreen(int(cropY - cropH/2 - 20), cropX, cropW, cropH, color=True)
@@ -125,8 +130,8 @@ def Main():
         cv.putText(lineJump, str(jumpCheck), (jumpCheck, 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
         lineDuck = cv.line(imgColor, (0, duckCheck), (860, duckCheck), (255, 0, 0), 1)
         cv.putText(lineDuck, str(duckCheck), (jumpCheck, duckCheck - 5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-        lineFastfall = cv.line(imgColor, (fastfallCheck, 0), (fastfallCheck, cropH), (255, 0, 0), 1)
-        cv.putText(lineFastfall, str(fastfallCheck), (fastfallCheck + 10, 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        # lineFastfall = cv.line(imgColor, (fastfallCheck, 0), (fastfallCheck, cropH), (255, 0, 0), 1)
+        # cv.putText(lineFastfall, str(fastfallCheck), (fastfallCheck + 10, 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
         # find dino
         dinoX, dinoY, confidence = GetTemplatePosition(img, templateDino)
@@ -144,8 +149,8 @@ def Main():
                 rect = cv.rectangle(imgColor, pos, (pos[0] + w, pos[1] + h), (0, 0, 255), 1)
                 cv.putText(rect, str(centerX), pos, cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
                 if centerX <= jumpCheck and grounded:
-                        pyautogui.press("up")
-                        
+                    pyautogui.press("up")
+
         # check for pterodactyl
         for ptero in templatePtero:
             w, h = ptero.shape[::-1]
@@ -156,18 +161,21 @@ def Main():
                 rect = cv.rectangle(imgColor, pos, (pos[0] + w, pos[1] + h), (255, 255, 0), 1)
                 cv.putText(rect, str(centerY), pos, cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
                 if centerX <= jumpCheck:
-                    if centerY >= duckCheck and grounded:
-                        pyautogui.press("up")
+                    if centerY >= duckCheck:
+                        if grounded:
+                            pyautogui.press("up")
                     else:
                         print("duck pterry")
                         pyautogui.keyDown("down")
-                        time.sleep(0.3)
+                        time.sleep(0.2)
                         pyautogui.keyUp("down")
 
         # auto restart on failure
         _, _, confidence = GetTemplatePosition(img, templateRestart)
         if confidence >= threshold:
             pyautogui.press("up")
+            print("EndTime: {}".format(elapsedTime))
+            startTime = time.time()
 
         # FPS counter
         fps = "FPS: {}".format(int(1/(time.time() - lastTime)))
