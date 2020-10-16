@@ -40,3 +40,9 @@ My first effort worked but had some large shortcomings. The cacti were getting n
 > Top feed is from the browser. Bottom feed is the screen grabs with debug processing added
 
 I've added more debug information to the processed feed. The vertical line shows how close an obstacle will get before the dino will jump. I'll probably have to have this gradually move to the right as the game speeds up over time. The horizontal line shows how the dinosaur handles pterodactyls once they're past the vertical line. If they're above the horizontal line, the dino will duck. If they're below the line, the dino will jump. I also refactored some code for performance and clarity. I'm still looking into how to keep framerate consistent while remaining OS agnostic.
+
+### MK-III
+![MK-III](/gifs/mkIII.gif)
+> Top feed is from the browser. Bottom feed is the screen grabs with debug processing added
+
+I resolved some of the framerate drop issues by only issuing jump commands when the dino is on the ground. This also meant I had to track the dinos y-position to determine this. I Tweaked the horizontal jump-check line to gradually move to the right to account for gamespeed increasing over time. I also adjusted the vertical duck-check line so the dino more accurately jumps or ducks past the pterodactyls. Next I'll fine-tune the starting jump-check position and how it will increase over time (linearly? exponetially? logrithmicly?).

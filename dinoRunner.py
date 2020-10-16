@@ -106,7 +106,7 @@ def Main():
     dinoX += runOffset
     dinoCenterX += runOffset
 
-    speedOffset = baseSpeed = 128
+    speedOffset = baseSpeed = 122
     jumpCheck = dinoX + dinoWidth + speedOffset
     duckCheck = startingDinoY + 10
 
@@ -116,9 +116,7 @@ def Main():
         lastTime = time.time()
         elapsedTime = time.time() - startTime
 
-        print("ElapsedTime: {}".format(elapsedTime))
-
-        speedModifier = elapsedTime * 0.1
+        speedModifier = elapsedTime * 0.16
         speedOffset = baseSpeed + speedModifier
         jumpCheck = dinoX + dinoWidth + int(speedOffset)
 
@@ -164,7 +162,6 @@ def Main():
                         if grounded:
                             pyautogui.press("up")
                     else:
-                        print("duck pterry")
                         pyautogui.keyDown("down")
                         time.sleep(0.2)
                         pyautogui.keyUp("down")
@@ -173,7 +170,8 @@ def Main():
         _, _, confidence = GetTemplatePosition(img, templateRestart)
         if confidence >= threshold:
             pyautogui.press("up")
-            print("EndTime: {}".format(elapsedTime))
+            print("ElapsedTime: {}".format(elapsedTime))
+            print("jumpCheck: {}".format(jumpCheck))
             startTime = time.time()
 
         # FPS counter
