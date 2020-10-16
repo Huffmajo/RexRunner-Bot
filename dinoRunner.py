@@ -106,11 +106,8 @@ def Main():
     dinoX += runOffset
     dinoCenterX += runOffset
 
-    # 134 for no fastfall
-    # 100 with fastfall
-    speedOffset = baseSpeed = 134
+    speedOffset = baseSpeed = 128
     jumpCheck = dinoX + dinoWidth + speedOffset
-    fastfallCheck = dinoX + dinoWidth + 40
     duckCheck = startingDinoY + 10
 
     startTime = time.time()
@@ -121,6 +118,10 @@ def Main():
 
         print("ElapsedTime: {}".format(elapsedTime))
 
+        speedModifier = elapsedTime * 0.1
+        speedOffset = baseSpeed + speedModifier
+        jumpCheck = dinoX + dinoWidth + int(speedOffset)
+
         # grab gameplay frame
         imgColor = GrabScreen(int(cropY - cropH/2 - 20), cropX, cropW, cropH, color=True)
         img = cv.cvtColor(imgColor, cv.COLOR_BGR2GRAY)
@@ -130,8 +131,6 @@ def Main():
         cv.putText(lineJump, str(jumpCheck), (jumpCheck, 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
         lineDuck = cv.line(imgColor, (0, duckCheck), (860, duckCheck), (255, 0, 0), 1)
         cv.putText(lineDuck, str(duckCheck), (jumpCheck, duckCheck - 5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-        # lineFastfall = cv.line(imgColor, (fastfallCheck, 0), (fastfallCheck, cropH), (255, 0, 0), 1)
-        # cv.putText(lineFastfall, str(fastfallCheck), (fastfallCheck + 10, 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
         # find dino
         dinoX, dinoY, confidence = GetTemplatePosition(img, templateDino)
