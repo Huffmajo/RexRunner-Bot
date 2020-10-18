@@ -52,8 +52,9 @@ GetCenterPoint
 Returns x and y position coordinates of given image's center
 """
 def GetCenterPoint(img, topLeftX, topLeftY):
-    h = img.shape[1]
-    w = img.shape[0]
+    w, h = img.shape[::-1]
+    # h = img.shape[1]
+    # w = img.shape[0]
     centerX = topLeftX + int(w/2)
     centerY = topLeftY + int(h/2)
     return (centerX, centerY)
@@ -66,6 +67,31 @@ def GetLowerRightPoint(img, topLeftX, topLeftY):
     x = topLeftX + img.shape[1]
     y = topLeftY + img.shape[0]
     return (x, y)
+
+def OpenWebPage(url):
+    try:
+        wb.open(url, 1, True)
+        time.sleep(2)    # give page time to load
+    except wb.Error as e:
+        print("Unable to open {} : {}".format(url, e))
+        sys.exit()
+
+def Jump():
+    pyautogui.press("up")
+    status = "jumping"
+    return status
+
+def Duck(duration):
+    status = "ducking"
+    pyautogui.keyDown("down")
+    time.sleep(duration)
+    pyautogui.keyUp("down")
+    return status
+
+def StopDucking():
+    pyautogui.keyUp("down")
+    status = ""
+    return status
 
 def Main():
     # load obstacle templates
@@ -80,15 +106,11 @@ def Main():
 
     threshold = 0.95
     grounded = True
+    status = ""
 
     # open game webpage
-    url = "https://chromedino.com/"
-    try:
-        wb.open(url, 1, True)
-        time.sleep(2)    # give page time to load
-    except wb.Error as e:
-        print("Unable to open {} : {}".format(url, e))
-        sys.exit()
+    OpenWebPage("https://chromedino.com/")
+    # OpenWebPage("http://www.trex-game.skipser.com/")
 
     monitorW, monitorH = pyautogui.size()
     fullScreen = GrabScreen(0, 0, monitorW, monitorH)   # haystack
@@ -100,7 +122,7 @@ def Main():
 
     dinoCrop = GrabScreen(int(cropY - cropH/2 - 20), cropX, cropW, cropH)
     dinoX, startingDinoY , _ = GetTemplatePosition(dinoCrop, templateDino) # dino's position in crop
-    dinoCenterX, _ = GetCenterPoint(dinoCrop, dinoX, startingDinoY)
+    dinoCenterX, _ = GetCenterPoint(templateDino, dinoX, startingDinoY)
 
     runOffset = 12
     dinoX += runOffset
@@ -108,15 +130,17 @@ def Main():
 
     speedOffset = baseSpeed = 122
     jumpCheck = dinoX + dinoWidth + speedOffset
-    duckCheck = startingDinoY + 10
+    duckCheck = dinoX + dinoWidth + 55
+    pteroCheck = startingDinoY + 10
 
     startTime = time.time()
+    onlyOnce = True
 
     while True:
         lastTime = time.time()
         elapsedTime = time.time() - startTime
 
-        speedModifier = elapsedTime * 0.16
+        speedModifier = elapsedTime * 0.24
         speedOffset = baseSpeed + speedModifier
         jumpCheck = dinoX + dinoWidth + int(speedOffset)
 
@@ -126,15 +150,21 @@ def Main():
 
         # draw horizontal and vertical limit lines
         lineJump = cv.line(imgColor, (jumpCheck, 0), (jumpCheck, cropH), (255, 0, 0), 1)
-        cv.putText(lineJump, str(jumpCheck), (jumpCheck, 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-        lineDuck = cv.line(imgColor, (0, duckCheck), (860, duckCheck), (255, 0, 0), 1)
-        cv.putText(lineDuck, str(duckCheck), (jumpCheck, duckCheck - 5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        cv.putText(lineJump, str(jumpCheck), (jumpCheck, 15), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        lineDuck = cv.line(imgColor, (duckCheck, 0), (duckCheck, cropH), (255, 0, 0), 1)
+        cv.putText(lineDuck, str(duckCheck), (duckCheck, 15), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        linePtero = cv.line(imgColor, (0, pteroCheck), (860, pteroCheck), (255, 0, 0), 1)
+        cv.putText(linePtero, str(pteroCheck), (jumpCheck, pteroCheck - 5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+
+        lineDino = cv.line(imgColor, (dinoCenterX, 0), (dinoCenterX, cropH), (0, 255, 0), 1)
+        cv.putText(lineDino, "Dino", (dinoCenterX, 15), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
         # find dino
         dinoX, dinoY, confidence = GetTemplatePosition(img, templateDino)
+        dinoCenterX, _ = GetCenterPoint(templateDino, dinoX, dinoY)
         if confidence >= threshold:
             rect = cv.rectangle(imgColor, (dinoX, dinoY), (dinoX + dinoWidth, dinoY + dinoHeight), (155, 255, 155), 1)
-            grounded = dinoY >= startingDinoY
+        grounded = dinoY >= startingDinoY
 
         # check for cacti
         for cactus in templateCacti:
@@ -143,10 +173,13 @@ def Main():
 
             for pos in zip(*positions[::-1]):
                 centerX, _ = GetCenterPoint(cactus, pos[0], pos[1])
+                lrX, _ = GetLowerRightPoint(cactus, pos[0], pos[1])
                 rect = cv.rectangle(imgColor, pos, (pos[0] + w, pos[1] + h), (0, 0, 255), 1)
                 cv.putText(rect, str(centerX), pos, cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+                if centerX <= dinoCenterX and not grounded:
+                    status = Duck(0.01)
                 if centerX <= jumpCheck and grounded:
-                    pyautogui.press("up")
+                    status = Jump()
 
         # check for pterodactyl
         for ptero in templatePtero:
@@ -157,29 +190,39 @@ def Main():
                 centerX, centerY = GetCenterPoint(ptero, pos[0], pos[1])
                 rect = cv.rectangle(imgColor, pos, (pos[0] + w, pos[1] + h), (255, 255, 0), 1)
                 cv.putText(rect, str(centerY), pos, cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
-                if centerX <= jumpCheck:
-                    if centerY >= duckCheck:
+                if centerY >= pteroCheck:
+                    if centerX <= dinoCenterX and not grounded:
+                        status = Duck(0.01)
+                    elif centerX <= jumpCheck:
                         if grounded:
-                            pyautogui.press("up")
-                    else:
-                        pyautogui.keyDown("down")
-                        time.sleep(0.2)
-                        pyautogui.keyUp("down")
+                            status = Jump()
+                elif centerX <= duckCheck:
+                    status = Duck(0.2)
 
         # auto restart on failure
         _, _, confidence = GetTemplatePosition(img, templateRestart)
         if confidence >= threshold:
             pyautogui.press("up")
-            print("ElapsedTime: {}".format(elapsedTime))
-            print("jumpCheck: {}".format(jumpCheck))
+            # print("ElapsedTime: {}".format(elapsedTime))
+            # print("jumpCheck: {}".format(jumpCheck))
             startTime = time.time()
+            status = ""
 
         # FPS counter
         fps = "FPS: {}".format(int(1/(time.time() - lastTime)))
-        cv.putText(imgColor, fps, (int(cropW/2), 15), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0))
+        cv.putText(imgColor, fps, (int(cropW/2) - 40, 15), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0))
+
+        # Dino action status
+        cv.putText(imgColor, status, (int(cropW/2) + 80, 15), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0))
 
         # show cropped image
         cv.imshow("Cropped Image", imgColor)
+
+        if onlyOnce:
+            onlyOnce = False
+            pyautogui.hotkey("alt", "tab")  # focus browser window for game control
+            time.sleep(0.5)
+            pyautogui.press("up")           # start the game
 
         if cv.waitKey(1) == ord("q"):
             break
